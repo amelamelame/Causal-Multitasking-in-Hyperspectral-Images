@@ -1,0 +1,67 @@
+# =====================================================================
+# config.yaml  —  RTX 3060 6GB / 16GB RAM
+# Real TAIGA Dataset: 12826x12143 pixels, 128 bands
+# =====================================================================
+
+# ── Paths (edit these to match your folder) ──
+paths:
+  hsi_file:    "dataset/raw/20170615_reflectance_mosaic_128b"   # no extension
+  label_file:  "dataset/raw/forestdata_stands"                  # no extension
+  bad_stands:  "dataset/raw/bad_stands_updated_15092020.csv"
+  checkpoint_dir: "checkpoints"
+  results_dir:    "results"
+  log_dir:        "results/logs"
+
+# ── Dataset ──
+data:
+  num_bands:      128
+  patch_size:     9           # 9x9 spatial patch (small = less VRAM)
+  train_stride:   8           # sample every 8 pixels during training
+  val_stride:     16
+  # Spatial split: col 0..8997 = train, col 8998..12825 = test (~70/30)
+  train_col_end:  8997
+  test_col_start: 9000
+  # Min valid pixels per class to include
+  min_class_pct:  0.001
+  num_workers:    2           # keep low for 16GB RAM
+  pin_memory:     false
+
+# ── Model (laptop-optimized = halved channels) ──
+model:
+  encoder_channels:  [64, 128, 128, 256]
+  decoder_channels:  128
+  dropout:           0.3
+  attn_reduction:    8
+  use_checkpoint:    true     # gradient checkpointing — saves ~30% VRAM
+
+# ── Training ──
+training:
+  device:         "cuda"
+  mixed_precision: true       # FP16 — critical for 6GB VRAM
+  batch_size:     4
+  num_epochs:     150
+  lr:             0.001
+  momentum:       0.7
+  weight_decay:   0.0001
+  warmup_epochs:  5
+  grad_clip:      1.0
+  val_every:      10
+  save_every:     10
+  seed:           42
+
+# ── Loss ──
+loss:
+  focal_alpha:  0.25
+  focal_gamma:  2.0
+  task_balance: "uncertainty"   # "uncertainty" | "equal"
+
+# ── Visualization ──
+viz:
+  # Region to use for prediction maps (center crop to keep memory manageable)
+  map_row_start:  4000
+  map_row_end:    5024    # 1024 rows
+  map_col_start:  4000
+  map_col_end:    5024    # 1024 cols
+
+# ── Colab upgrade (change these when moving to Colab Pro) ──
+# batch_size: 32  |  encoder_channels: [128,256,256,512]  |  patch_size: 11

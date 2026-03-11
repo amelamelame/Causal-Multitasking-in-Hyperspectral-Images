@@ -1,0 +1,92 @@
+# =====================================================================
+# config_causal.yaml  —  Causal Model Config
+# RTX 3060 6GB / 16GB RAM
+# =====================================================================
+
+# ── Paths ──────────────────────────────────────────────────────────
+paths:
+  hsi_file:    "dataset/raw/20170615_reflectance_mosaic_128b"
+  label_file:  "dataset/raw/forestdata_stands"
+  bad_stands:  "dataset/raw/bad_stands_updated_15092020.csv"
+  checkpoint_dir: "checkpoints/causal"
+  results_dir:    "results/causal"
+  log_dir:        "results/causal/logs"
+  # Baseline checkpoint (for comparison)
+  baseline_checkpoint: "checkpoints/best.pth"
+
+# ── Dataset ────────────────────────────────────────────────────────
+data:
+  num_bands:      128
+  patch_size:     9
+  train_stride:   8
+  val_stride:     16
+  train_col_end:  8997
+  test_col_start: 9000
+  num_workers:    2
+  pin_memory:     false
+
+# ── Model ──────────────────────────────────────────────────────────
+model:
+  encoder_channels:  [64, 128, 128, 256]
+  decoder_channels:  128
+  dropout:           0.3
+  attn_reduction:    8
+  use_checkpoint:    true
+
+# ── Causal Modules ─────────────────────────────────────────────────
+causal:
+  # Module 2: Disentanglement
+  causal_dim:        64      # Z_causal dimension (reduce if OOM)
+  spur_dim:          64      # Z_spurious dimension
+  num_envs:          7       # TAIGA flight strips
+  grl_lambda:        1.0     # Gradient Reversal Layer lambda
+
+  # Module 1: DAG
+  use_dag_prior:     true    # initialize with ecological knowledge
+  dag_threshold:     0.5
+  lambda_dag:        1.0
+  dag_anneal_epoch:  10      # start DAG loss at epoch 10
+
+  # Module 3: Causal Decoders
+  cond_dim:          32      # parent conditioning projection dim
+
+  # Module 4: Counterfactuals (inference only — no training loss)
+  cf_max_iter:       150
+  cf_lambda_dist:    0.5
+  cf_step_size:      0.02    # for CF augmentation
+  cf_n_steps:        5       # steps per augmented sample
+
+  # Loss weights
+  lambda_irm:        0.1
+  lambda_adv:        0.1
+  lambda_mi:         0.05
+  lambda_recon:      0.1
+  irm_anneal_epoch:  20      # start IRM+HSIC at epoch 20
+
+# ── Training ───────────────────────────────────────────────────────
+training:
+  device:          "cuda"
+  mixed_precision:  true
+  batch_size:       4        # same as baseline for fair comparison
+  num_epochs:       150
+  lr:               0.001
+  momentum:         0.7
+  weight_decay:     0.0001
+  warmup_epochs:    5
+  grad_clip:        1.0
+  val_every:        10
+  save_every:       10
+  seed:             42
+
+# ── Loss ───────────────────────────────────────────────────────────
+loss:
+  focal_alpha:  0.25
+  focal_gamma:  2.0
+  task_balance: "uncertainty"
+
+# ── Visualization ──────────────────────────────────────────────────
+viz:
+  map_row_start:  4000
+  map_row_end:    5024
+  map_col_start:  4000
+  map_col_end:    5024
